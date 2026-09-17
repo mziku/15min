@@ -1,108 +1,364 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>15 Minute Call</title>
 
-<title>15 Minute Call</title>
+  <style>
+    :root {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+    }
 
-<style>
-body {
-    font-family: Arial, sans-serif;
-    text-align: center;
-    padding-top: 80px;
-}
+    * { box-sizing: border-box; }
 
-#timer {
-    font-size: 70px;
-    font-weight: bold;
-    margin: 30px;
-}
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #f6f7f9;
+      color: #111;
+      padding: 24px;
+    }
 
-button {
-    font-size: 20px;
-    padding: 15px 30px;
-    cursor: pointer;
-}
-</style>
+    .card {
+      width: min(680px, 100%);
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 18px;
+      padding: 30px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 5vw, 42px);
+    }
+
+    .sub {
+      margin: 0 0 28px;
+      color: #555;
+      line-height: 1.45;
+    }
+
+    #timer {
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(64px, 15vw, 110px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      text-align: center;
+      margin: 20px 0 8px;
+    }
+
+    #phase {
+      text-align: center;
+      min-height: 28px;
+      margin-bottom: 26px;
+      font-weight: 600;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    button, .button {
+      appearance: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 13px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+    }
+
+    .primary {
+      background: #111;
+      color: white;
+    }
+
+    .secondary {
+      background: #eceef1;
+      color: #111;
+    }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .setup {
+      border-top: 1px solid #e3e3e3;
+      margin-top: 26px;
+      padding-top: 22px;
+    }
+
+    .setup label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    select, input {
+      width: 100%;
+      border: 1px solid #bbb;
+      border-radius: 10px;
+      padding: 12px;
+      font: inherit;
+      background: white;
+      color: #111;
+    }
+
+    .invite {
+      margin-top: 22px;
+      padding: 16px;
+      border-radius: 12px;
+      background: #f1f3f5;
+      word-break: break-all;
+      display: none;
+    }
+
+    .invite strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .note {
+      margin-top: 22px;
+      color: #555;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .ended {
+      color: #b00020;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body { background: #111; color: #eee; }
+      .card { background: #191919; border-color: #333; }
+      .sub, .note { color: #aaa; }
+      .secondary { background: #333; color: #fff; }
+      .invite { background: #252525; }
+      select, input { background: #222; color: #fff; border-color: #555; }
+    }
+  </style>
 </head>
 
 <body>
+  <main class="card">
+    <h1>15 Minute Call</h1>
+    <p class="sub">
+      Both people use the same invitation link. The call window closes on both
+      computers at the same absolute deadline.
+    </p>
 
-<h1>15 Minute Call</h1>
+    <div id="timer">15:00</div>
+    <div id="phase">Create a call below.</div>
 
-<div id="timer">15:00</div>
+    <div class="row">
+      <button id="joinBtn" class="primary" disabled>Open Jitsi call</button>
+      <button id="copyBtn" class="secondary" disabled>Copy invitation link</button>
+    </div>
 
-<button id="start">Start 15-minute call</button>
+    <section id="setup" class="setup">
+      <label for="delay">When should the 15-minute countdown begin?</label>
+      <select id="delay">
+        <option value="0">Immediately</option>
+        <option value="30">In 30 seconds</option>
+        <option value="60" selected>In 1 minute</option>
+        <option value="120">In 2 minutes</option>
+        <option value="300">In 5 minutes</option>
+      </select>
 
-<p id="status"></p>
+      <div class="row">
+        <button id="createBtn" class="primary">Create 15-minute call</button>
+      </div>
+    </section>
 
-<script>
+    <div id="inviteBox" class="invite">
+      <strong>Send this exact link to the other person:</strong>
+      <span id="inviteUrl"></span>
+    </div>
 
-const params = new URLSearchParams(window.location.search);
+    <p class="note">
+      Important: both participants must keep this timer page open and launch Jitsi
+      using the “Open Jitsi call” button. Do not refresh or close this page during
+      the call. Your browser may ask you to allow pop-ups for this site.
+    </p>
+  </main>
 
-let room = params.get("room");
+  <script>
+    const CALL_SECONDS = 15 * 60;
 
-if (!room) {
-    room = "15min-" + crypto.randomUUID();
+    const timerEl = document.getElementById("timer");
+    const phaseEl = document.getElementById("phase");
+    const joinBtn = document.getElementById("joinBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const createBtn = document.getElementById("createBtn");
+    const setupEl = document.getElementById("setup");
+    const inviteBox = document.getElementById("inviteBox");
+    const inviteUrlEl = document.getElementById("inviteUrl");
+    const delayEl = document.getElementById("delay");
 
-    const url =
-        window.location.pathname +
-        "?room=" +
-        encodeURIComponent(room);
+    const params = new URLSearchParams(window.location.search);
 
-    history.replaceState({}, "", url);
-}
+    let room = params.get("room");
+    let start = Number(params.get("start"));
+    let end = Number(params.get("end"));
+    let callWindow = null;
+    let tickHandle = null;
 
-let callWindow;
-let timerInterval;
+    function randomRoom() {
+      if (window.crypto && crypto.randomUUID) {
+        return "15min-" + crypto.randomUUID().replaceAll("-", "");
+      }
+      return "15min-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    }
 
-document.getElementById("start").onclick = function () {
+    function format(seconds) {
+      const safe = Math.max(0, Math.ceil(seconds));
+      const m = Math.floor(safe / 60);
+      const s = safe % 60;
+      return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+    }
 
-    // Open a NORMAL Jitsi meeting, not an embedded one
-    callWindow = window.open(
-        "https://meet.jit.si/" + encodeURIComponent(room),
-        "jitsiCall"
-    );
+    function buildInviteUrl() {
+      const url = new URL(window.location.href);
+      url.search = "";
+      url.searchParams.set("room", room);
+      url.searchParams.set("start", String(start));
+      url.searchParams.set("end", String(end));
+      return url.toString();
+    }
 
-    const endTime = Date.now() + (15 * 60 * 1000);
+    function hasValidInvite() {
+      return (
+        room &&
+        Number.isFinite(start) &&
+        Number.isFinite(end) &&
+        start > 0 &&
+        end > start
+      );
+    }
 
-    document.getElementById("start").disabled = true;
+    function hardCutoff() {
+      timerEl.textContent = "00:00";
+      phaseEl.textContent = "Call ended.";
+      phaseEl.classList.add("ended");
+      joinBtn.disabled = true;
 
-    timerInterval = setInterval(function () {
-
-        const remaining = endTime - Date.now();
-
-        if (remaining <= 0) {
-
-            clearInterval(timerInterval);
-
-            document.getElementById("timer").textContent = "00:00";
-            document.getElementById("status").textContent =
-                "Call ended.";
-
-            // HARD CUTOFF
-            if (callWindow && !callWindow.closed) {
-                callWindow.close();
-            }
-
-            return;
+      if (callWindow && !callWindow.closed) {
+        try {
+          callWindow.close();
+        } catch (e) {
+          console.warn("Could not close Jitsi window:", e);
         }
+      }
 
-        const seconds = Math.ceil(remaining / 1000);
+      if (tickHandle) {
+        clearInterval(tickHandle);
+        tickHandle = null;
+      }
+    }
 
-        const minutes = Math.floor(seconds / 60);
-        const secs = seconds % 60;
+    function tick() {
+      const now = Date.now();
 
-        document.getElementById("timer").textContent =
-            String(minutes).padStart(2, "0")
-            + ":" +
-            String(secs).padStart(2, "0");
+      if (now >= end) {
+        hardCutoff();
+        return;
+      }
 
-    }, 250);
-};
+      if (now < start) {
+        const untilStart = (start - now) / 1000;
+        timerEl.textContent = format(CALL_SECONDS);
+        phaseEl.textContent =
+          "Call starts in " + format(untilStart) + " — you can join Jitsi now.";
+        return;
+      }
 
-</script>
+      const remaining = (end - now) / 1000;
+      timerEl.textContent = format(remaining);
 
+      if (remaining <= 60) {
+        phaseEl.textContent = "Final minute";
+      } else if (remaining <= 300) {
+        phaseEl.textContent = "5 minutes or less remaining";
+      } else {
+        phaseEl.textContent = "Call in progress";
+      }
+    }
+
+    function initialiseInvite() {
+      setupEl.style.display = "none";
+      joinBtn.disabled = false;
+      copyBtn.disabled = false;
+
+      const invite = buildInviteUrl();
+      inviteUrlEl.textContent = invite;
+      inviteBox.style.display = "block";
+
+      // Keep the canonical shared deadline in the browser address bar.
+      history.replaceState(null, "", invite);
+
+      tick();
+      tickHandle = setInterval(tick, 200);
+    }
+
+    createBtn.addEventListener("click", () => {
+      const delaySeconds = Number(delayEl.value);
+
+      room = randomRoom();
+      start = Date.now() + delaySeconds * 1000;
+      end = start + CALL_SECONDS * 1000;
+
+      initialiseInvite();
+    });
+
+    joinBtn.addEventListener("click", () => {
+      if (Date.now() >= end) {
+        hardCutoff();
+        return;
+      }
+
+      // A named window lets repeated clicks focus/reuse the same Jitsi window.
+      const jitsiUrl = "https://meet.jit.si/" + encodeURIComponent(room);
+      callWindow = window.open(jitsiUrl, "jitsi15minCall");
+
+      if (!callWindow) {
+        phaseEl.textContent =
+          "Your browser blocked the call window. Allow pop-ups and click again.";
+      } else {
+        try {
+          callWindow.focus();
+        } catch (_) {}
+      }
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      const invite = buildInviteUrl();
+
+      try {
+        await navigator.clipboard.writeText(invite);
+        const oldText = copyBtn.textContent;
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => (copyBtn.textContent = oldText), 1400);
+      } catch (e) {
+        prompt("Copy this invitation link:", invite);
+      }
+    });
+
+    if (hasValidInvite()) {
+      initialiseInvite();
+    }
+  </script>
 </body>
 </html>
