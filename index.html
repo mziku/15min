@@ -1,177 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>15 Minute Call</title>
+<title>15 Minute Call</title>
 
-    <style>
-        html, body {
-            margin: 0;
-            height: 100%;
-            font-family: Arial, sans-serif;
-            background: #111;
-        }
+<style>
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding-top: 80px;
+}
 
-        #timer-bar {
-            height: 60px;
-            background: white;
-            color: black;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            font-weight: bold;
-        }
+#timer {
+    font-size: 70px;
+    font-weight: bold;
+    margin: 30px;
+}
 
-        #meet {
-            height: calc(100vh - 60px);
-        }
-    </style>
+button {
+    font-size: 20px;
+    padding: 15px 30px;
+    cursor: pointer;
+}
+</style>
 </head>
 
 <body>
 
-<div id="timer-bar">
-    Call limit: <span id="timer">&nbsp;15:00</span>
-</div>
+<h1>15 Minute Call</h1>
 
-<div id="meet"></div>
+<div id="timer">15:00</div>
 
-<script src="https://meet.jit.si/external_api.js"></script>
+<button id="start">Start 15-minute call</button>
+
+<p id="status"></p>
 
 <script>
-    const CALL_LENGTH = 15 * 60; // 15 minutes in seconds
 
-    const params = new URLSearchParams(window.location.search);
+const params = new URLSearchParams(window.location.search);
 
-    let roomName = params.get("room");
+let room = params.get("room");
 
-    // If no room is specified, create a random one
-    if (!roomName) {
-        roomName =
-            "TimedCall-" +
-            crypto.randomUUID().replaceAll("-", "");
+if (!room) {
+    room = "15min-" + crypto.randomUUID();
 
-        const newURL =
-            window.location.pathname +
-            "?room=" +
-            roomName;
+    const url =
+        window.location.pathname +
+        "?room=" +
+        encodeURIComponent(room);
 
-        history.replaceState(null, "", newURL);
-    }
+    history.replaceState({}, "", url);
+}
 
-    const domain = "meet.jit.si";
+let callWindow;
+let timerInterval;
 
-    const options = {
-        roomName: roomName,
-        width: "100%",
-        height: "100%",
-        parentNode: document.querySelector("#meet")
-    };
+document.getElementById("start").onclick = function () {
 
-    const api = new JitsiMeetExternalAPI(domain, options);
+    // Open a NORMAL Jitsi meeting, not an embedded one
+    callWindow = window.open(
+        "https://meet.jit.si/" + encodeURIComponent(room),
+        "jitsiCall"
+    );
 
-    let deadline = null;
-    let interval = null;
-    let ended = false;
+    const endTime = Date.now() + (15 * 60 * 1000);
 
-    function formatTime(seconds) {
-        const minutes = Math.floor(seconds / 60);
-        const secs = seconds % 60;
+    document.getElementById("start").disabled = true;
 
-        return (
-            String(minutes).padStart(2, "0") +
-            ":" +
-            String(secs).padStart(2, "0")
-        );
-    }
+    timerInterval = setInterval(function () {
 
-    function endCall() {
-
-        if (ended) return;
-
-        ended = true;
-
-        document.getElementById("timer").textContent = "00:00";
-
-        /*
-         Try to terminate the entire conference.
-         This works if this participant is moderator
-         and the deployment supports endConference.
-        */
-        api.executeCommand("endConference");
-
-        /*
-         Even if endConference is unavailable,
-         definitely disconnect this participant.
-        */
-        setTimeout(() => {
-            api.executeCommand("hangup");
-        }, 500);
-    }
-
-    function updateTimer() {
-
-        const remaining =
-            Math.ceil((deadline - Date.now()) / 1000);
+        const remaining = endTime - Date.now();
 
         if (remaining <= 0) {
 
-            document.getElementById("timer").textContent =
-                "00:00 — CALL ENDED";
+            clearInterval(timerInterval);
 
-            clearInterval(interval);
+            document.getElementById("timer").textContent = "00:00";
+            document.getElementById("status").textContent =
+                "Call ended.";
 
-            endCall();
+            // HARD CUTOFF
+            if (callWindow && !callWindow.closed) {
+                callWindow.close();
+            }
 
             return;
         }
 
+        const seconds = Math.ceil(remaining / 1000);
+
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+
         document.getElementById("timer").textContent =
-            formatTime(remaining);
-    }
+            String(minutes).padStart(2, "0")
+            + ":" +
+            String(secs).padStart(2, "0");
 
-    /*
-     Jitsi reports when the conference itself
-     was created. That gives everyone the same
-     reference time.
-    */
-    api.addEventListener(
-        "conferenceCreatedTimestamp",
-        event => {
+    }, 250);
+};
 
-            let created = event.timestamp;
-
-            // Normalize seconds vs milliseconds
-            if (created < 1000000000000) {
-                created *= 1000;
-            }
-
-            deadline =
-                created + CALL_LENGTH * 1000;
-
-            updateTimer();
-
-            interval =
-                setInterval(updateTimer, 250);
-
-            // Also display Jitsi's own meeting timer
-            const alreadyElapsed =
-                Math.floor(
-                    (Date.now() - created) / 1000
-                );
-
-            api.executeCommand(
-                "setMeetingTimer",
-                {
-                    duration: CALL_LENGTH,
-                    elapsed: alreadyElapsed
-                }
-            );
-        }
-    );
 </script>
 
 </body>
